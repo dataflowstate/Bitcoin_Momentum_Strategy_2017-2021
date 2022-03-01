@@ -1,0 +1,100 @@
+–Check for NULL–
+Select *
+From dbo.btc_usd
+Where refdate IS NULL OR
+priceopen IS NULL OR
+pricehigh IS NULL OR
+pricelow IS NULL OR
+priceclose IS NULL OR
+volume_usd IS NULL;
+
+–-Alter Columns to correct data type–
+ALTER TABLE dbo.btc_usd
+ALTER COLUMN refdate DATE;
+
+ALTER TABLE dbo.btc_usd
+ALTER COLUMN priceopen Decimal(12,2); 
+
+ALTER TABLE dbo.btc_usd
+ALTER COLUMN pricehigh Decimal(12,2); 
+
+ALTER TABLE dbo.btc_usd
+ALTER COLUMN pricelow Decimal(12,2); 
+
+ALTER TABLE dbo.btc_usd
+ALTER COLUMN priceclose Decimal(12,2);
+
+–Check for Outliers–
+Select TOP 100 *
+From dbo.btc_usd
+Order By priceopen asc;
+
+Select TOP 100 *
+From dbo.btc_usd
+Order By priceopen desc;
+
+Select TOP 100 *
+From dbo.btc_usd
+Order By refdate asc;
+
+Select TOP 100 *
+From dbo.btc_usd
+Order By refdate desc;
+
+Select TOP 100 *
+From dbo.btc_usd
+Order By pricehigh asc;
+
+Select TOP 100 *
+From dbo.btc_usd
+Order By pricehigh desc;
+
+Select TOP 100 *
+From dbo.btc_usd
+Order By pricelow asc;
+
+Select TOP 100 *
+From dbo.btc_usd
+Order By pricelow desc;
+
+Select TOP 100 *
+From dbo.btc_usd
+Order By priceclose asc;
+
+Select TOP 100 *
+From dbo.btc_usd
+Order By priceclose desc;
+
+Select TOP 100 *
+From dbo.btc_usd
+Order By volume_usd asc;
+
+Select TOP 100 *
+From dbo.btc_usd
+Order By volume_usd desc;
+
+–Calculate Daily Return
+ALTER TABLE dbo.btc_usd
+ADD daily_return
+AS Cast(((priceclose-priceopen)/priceopen * 100) as decimal(10,2));
+
+–30 day moving average volume and LEAD–
+Select *,
+avg(volume_usd) OVER(ORDER BY refdate
+      ROWS 30 PRECEDING)
+      as "30ma_volume",
+LEAD(daily_return,1)over(Order by refdate) "day_1",
+LEAD(daily_return,2)over(Order by refdate) "day_2",
+LEAD(daily_return,3)over(Order by refdate) "day_3"
+Into dbo.btc_agg
+From dbo.btc_usd;
+
+–Calculate volume as a percentage of the 30 day MA
+ALTER TABLE dbo.btc_agg
+ADD relative_volume
+AS (("volume_usd"-"30ma_volume")/"30ma_volume" * 100);
+
+–The results
+Select *
+From dbo.btc_agg
+Where refdate > '2017-01-30' and relative_volume > 50 and daily_return > 5;
